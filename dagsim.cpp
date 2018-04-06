@@ -121,6 +121,13 @@ class DashmmDag {
                     << id << endl;
             }
         }
+        vector<uint64_t> getInitialNodes () {
+            vector<uint64_t> result;
+            for (map<uint64_t, DashmmNode>::iterator it=dag.begin(); it!=dag.end(); ++it)
+                if (it->second.remaining == 0)
+                    result.push_back(it->first);
+            return result;
+        }
         map<uint64_t, Function> getOutEdges (uint64_t id) {
             return this->getNode(id).outs();
         }
@@ -179,13 +186,13 @@ class Frontier {
                 q.push(f);
             }
         }
-        bool empty() {
+        bool empty () {
             return q.empty();
         }
-        size_t size() {
+        size_t size () {
             return q.size();
         }
-        Frontier split() {
+        Frontier split () {
             Frontier f;
             for (int i=0;i<this->size()/2;i++) {
                 f.push(this->pop());
@@ -194,22 +201,24 @@ class Frontier {
         }
 };
 
-void usage() {
+void usage () {
     cout<<"usage: dagsim input.txt"<<endl;
 }
 
-int main(int argc, char* argv[]) {
+int main (int argc, char* argv[]) {
     if (argc<2) {usage();return 0;}
     string textin(argv[1]);
     int p = 4; 
     //Read in DASHMM dag
     DashmmDag dag(textin);
     vector<Frontier> front(p);
-    
-    
+    vector<uint64_t> start_nodes = dag.getInitialNodes();
+    for (vector<uint64_t>::iterator it=start_nodes.begin(); it!=start_nodes.end(); ++it) {
+        front[0].push_edges(*it,dag);
+    }
     
     //Print the maps for verification
-    dag.print();
+    //dag.print();
     
     
     
