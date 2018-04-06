@@ -5,6 +5,7 @@
 #include <utility> 
 #include <list>
 #include <map>
+#include <queue>
 #include <cstdint>
 
 using namespace std;
@@ -130,12 +131,47 @@ class DashmmDag {
                     << id1 << " and " << id2 << endl;
             }
         }
+
+        int getFunctionCycles (uint64_t m, uint64_t n) {
+            return this->getFunction(m, n).cycles;
+        }
+
+        //The destination node of the function determines the priority.
+        int getFunctionPriority (uint64_t dest) {
+            return dag.at(dest).getPriority();
+        }
 };
 
-int getFunctionCycles (uint64_t m, uint64_t n, DashmmDag dag) {
-    return dag.getFunction(m, n).cycles;
-}
+typedef struct {
+    uint64_t m;
+    uint64_t n;
+    int priority;
+} frame;
 
+auto frame_comp =
+    [](frame& e1, frame& e2) 
+    { return e1.priority < e2.priority; };
+
+class Frontier {
+    private:
+        priority_queue<frame, vector<frame>, decltype(frame_comp)> q;
+    public:
+        frame pop () {
+            frame r = q.top();
+            q.pop(); 
+            return r;
+        }
+        void push_edges (uint64_t n, DashmmDag& dag) {
+            map<uint64_t, Function> edges(dag.getOutEdges(n));
+            for (map<uint64_t, Function>::iterator it=edges.begin(); it!=edges.end(); ++it) {
+                frame f;
+                f.m = n;
+                f.n = it->first;
+                f.priority = dag.getFunctionPriority(it->first);
+                q.push(f);
+            }
+        }
+};
 
 void usage() {
     cout<<"usage: dagsim input.txt"<<endl;
@@ -149,7 +185,10 @@ int main(int argc, char* argv[]) {
     DashmmDag dag(textin);
     
     //Print the maps for verification
-    dag.print();
+    //dag.print();
+    
+    
+    
     
     return 0;
 }
