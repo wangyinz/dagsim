@@ -37,7 +37,6 @@ class DashmmNode {
             this->remaining = 0;
         }
         pair<map<uint64_t, Function>::iterator, bool> insertEdge (uint64_t d, Function f) {
-            remaining++;
             return out_edges.insert (pair<uint64_t, Function>(d, f));
         }
         map<uint64_t, Function> outs () {
@@ -97,6 +96,12 @@ class DashmmDag {
                     iss >> std::dec >> fun.cycles;
                     dag.at(id).insertEdge(idout, fun);
                     //cout << id  << "\t" << idout << "\t" << fun.cycles << endl; 
+                }
+            }
+            for (map<uint64_t, DashmmNode>::iterator it=dag.begin(); it!=dag.end(); ++it) {
+                map<uint64_t, Function> edges = it->second.outs();
+                for (map<uint64_t, Function>::iterator iit=edges.begin(); iit!=edges.end(); ++iit) {
+                    dag.at(iit->first).remaining++;
                 }
             }
         }
@@ -204,11 +209,12 @@ int main(int argc, char* argv[]) {
     int p = 4; 
     //Read in DASHMM dag
     DashmmDag dag(textin);
+    vector<Frontier> front(p);
     
     
     
     //Print the maps for verification
-    //dag.print();
+    dag.print();
     
     
     
