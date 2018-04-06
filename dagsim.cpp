@@ -24,6 +24,7 @@ class DashmmNode {
         string type;
         int priority;
         int s;
+        char* block;
     public:
         DashmmNode (uint64_t id, string type, int priority, int s) {
             this->id = id;
@@ -130,6 +131,8 @@ class DashmmDag {
 int getFunctionCycles (uint64_t m, uint64_t n, DashmmDag dag) {
     return dag.getFunction(m, n).cycles;
 }
+
+
 
 void usage() {
     cout<<"usage: dagsim input.txt"<<endl;
