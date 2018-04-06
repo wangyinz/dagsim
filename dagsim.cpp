@@ -24,12 +24,12 @@ class DashmmNode {
         uint64_t id;
         string type;
         int priority;
-        int s;
+        size_t s;
         char* block;
     public:
         int remaining; 
         
-        DashmmNode (uint64_t id, string type, int priority, int s) {
+        DashmmNode (uint64_t id, string type, int priority, size_t s) {
             this->id = id;
             this->type = type;
             this->priority = priority;
@@ -61,10 +61,10 @@ class DashmmNode {
         int getPriority () {
             return priority;
         }
-        void setSize (int d) {
+        void setSize (size_t d) {
             s=d;
         }
-        int size () {
+        size_t size () {
             return s;
         }
 };
@@ -80,7 +80,8 @@ class DashmmDag {
             while (getline(infile, line)) {
                 istringstream iss(line);
                 string type;
-                int priority, size;
+                int priority;
+                size_t size;
                 uint64_t id, idout;
                 Function fun;
                 iss >> std::hex >> id;
@@ -170,6 +171,12 @@ class Frontier {
                 f.priority = dag.getFunctionPriority(it->first);
                 q.push(f);
             }
+        }
+        bool empty() {
+            return q.empty();
+        }
+        size_t size() {
+            return q.size();
         }
 };
 
