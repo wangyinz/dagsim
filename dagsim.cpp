@@ -211,12 +211,24 @@ int main (int argc, char* argv[]) {
     int p = 4; 
     //Read in DASHMM dag
     DashmmDag dag(textin);
+    
+    //define one frontier for each processor, and add all the frames to frontier 0
     vector<Frontier> front(p);
     vector<uint64_t> start_nodes = dag.getInitialNodes();
     for (vector<uint64_t>::iterator it=start_nodes.begin(); it!=start_nodes.end(); ++it) {
         front[0].push_edges(*it,dag);
     }
     
+    //simulation begin
+    bool finished(false);
+    while (!finished) {
+    
+    
+        //see whether all the frontiers are empty
+        finished = front[0].empty();
+        for (int i=1;i<p;i++)
+            finished = finished && front[i].empty();
+    }
     //Print the maps for verification
     //dag.print();
     
