@@ -127,6 +127,10 @@ class DashmmDag {
         }
 };
 
+int getFunctionCycles (uint64_t m, uint64_t n, DashmmDag dag) {
+    return dag.getFunction(m, n).cycles;
+}
+
 void usage() {
     cout<<"usage: dagsim input.txt"<<endl;
 }
