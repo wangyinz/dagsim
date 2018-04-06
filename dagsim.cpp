@@ -201,6 +201,11 @@ class Frontier {
         }
 };
 
+
+void next_step (int i, vector<Frontier> front, vector<int> pc, vector<vector<bool>> record) {
+
+}
+
 void usage () {
     cout<<"usage: dagsim input.txt"<<endl;
 }
@@ -219,10 +224,19 @@ int main (int argc, char* argv[]) {
         front[0].push_edges(*it,dag);
     }
     
+    //matrix to record whether a processor is busy or not
+    vector<vector<bool>> record(p);
+    
+    //program counter for each processor
+    vector<int> pc(p);
+    
     //simulation begin
     bool finished(false);
     while (!finished) {
-    
+        //move a step for each processor
+        for (int i=0;i<p;i++) {
+            next_step(i, front, pc, record);
+        }
     
         //see whether all the frontiers are empty
         finished = front[0].empty();
