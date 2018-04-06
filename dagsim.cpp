@@ -149,18 +149,25 @@ typedef struct {
     int priority;
 } frame;
 
-auto frame_comp =
-    [](frame& e1, frame& e2) 
-    { return e1.priority < e2.priority; };
+struct frame_comp
+{
+    bool operator() (frame& e1, frame& e2) { 
+        return e1.priority < e2.priority; 
+    }
+};
+
 
 class Frontier {
     private:
-        priority_queue<frame, vector<frame>, decltype(frame_comp)> q;
+        priority_queue<frame, vector<frame>, frame_comp> q;
     public:
         frame pop () {
             frame r = q.top();
             q.pop(); 
             return r;
+        }
+        void push (frame f) {
+            q.push(f);
         }
         void push_edges (uint64_t n, DashmmDag& dag) {
             map<uint64_t, Function> edges(dag.getOutEdges(n));
@@ -178,6 +185,13 @@ class Frontier {
         size_t size() {
             return q.size();
         }
+        Frontier split() {
+            Frontier f;
+            for (int i=0;i<this->size()/2;i++) {
+                f.push(this->pop());
+            }
+            return f;
+        }
 };
 
 void usage() {
@@ -187,9 +201,11 @@ void usage() {
 int main(int argc, char* argv[]) {
     if (argc<2) {usage();return 0;}
     string textin(argv[1]);
-
+    int p = 4; 
     //Read in DASHMM dag
     DashmmDag dag(textin);
+    
+    
     
     //Print the maps for verification
     //dag.print();
