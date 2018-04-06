@@ -26,13 +26,17 @@ class DashmmNode {
         int s;
         char* block;
     public:
+        int remaining; 
+        
         DashmmNode (uint64_t id, string type, int priority, int s) {
             this->id = id;
             this->type = type;
             this->priority = priority;
             this->s = s;
-        };
+            this->remaining = 0;
+        }
         pair<map<uint64_t, Function>::iterator, bool> insertEdge (uint64_t d, Function f) {
+            remaining++;
             return out_edges.insert (pair<uint64_t, Function>(d, f));
         }
         map<uint64_t, Function> outs () {
@@ -96,13 +100,13 @@ class DashmmDag {
         }
         void print () {
             for (map<uint64_t, DashmmNode>::iterator it=dag.begin(); it!=dag.end(); ++it) {
-                cout << std::hex << it->first;
+                cout << std::hex << it->first << " " << std::dec << it->second.remaining;
                 cout << " => ";
                 map<uint64_t, Function> edges = it->second.outs();
                 for (map<uint64_t, Function>::iterator iit=edges.begin(); iit!=edges.end(); ++iit) {
                     cout << std::hex << iit->first;
                     cout << " " << std::dec << iit->second.cycles << endl;
-                    cout << "\t\t";
+                    cout << "\t\t  ";
                 }
                 cout << endl;
             }
@@ -131,7 +135,6 @@ class DashmmDag {
 int getFunctionCycles (uint64_t m, uint64_t n, DashmmDag dag) {
     return dag.getFunction(m, n).cycles;
 }
-
 
 
 void usage() {
