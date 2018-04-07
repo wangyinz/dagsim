@@ -203,7 +203,7 @@ class Frontier {
 
 
 void next_step (int i, vector<Frontier> front, vector<int> pc, vector<vector<bool>> record) {
-
+    
 }
 
 void usage () {
@@ -228,7 +228,7 @@ int main (int argc, char* argv[]) {
     vector<vector<bool>> record(p);
     
     //program counter for each processor
-    vector<int> pc(p);
+    vector<int> pc(p, 0);
     
     //simulation begin
     bool finished(false);
