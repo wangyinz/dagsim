@@ -154,11 +154,11 @@ typedef struct {
     uint64_t m;
     uint64_t n;
     int priority;
-} frame;
+} item;
 
-struct frame_comp
+struct item_comp
 {
-    bool operator() (frame& e1, frame& e2) { 
+    bool operator() (item& e1, item& e2) { 
         return e1.priority < e2.priority; 
     }
 };
@@ -166,20 +166,20 @@ struct frame_comp
 
 class Frontier {
     private:
-        priority_queue<frame, vector<frame>, frame_comp> q;
+        priority_queue<item, vector<item>, item_comp> q;
     public:
-        frame pop () {
-            frame r = q.top();
+        item pop () {
+            item r = q.top();
             q.pop(); 
             return r;
         }
-        void push (frame f) {
+        void push (item f) {
             q.push(f);
         }
         void push_edges (uint64_t n, DashmmDag& dag) {
             map<uint64_t, Function> edges(dag.getOutEdges(n));
             for (map<uint64_t, Function>::iterator it=edges.begin(); it!=edges.end(); ++it) {
-                frame f;
+                item f;
                 f.m = n;
                 f.n = it->first;
                 f.priority = dag.getFunctionPriority(it->first);
@@ -232,7 +232,7 @@ int main (int argc, char* argv[]) {
     //Read in DASHMM dag
     DashmmDag dag(textin);
     
-    //define one frontier for each processor, and add all the frames to frontier 0
+    //define one frontier for each processor, and add all the items to frontier 0
     vector<Frontier> front(p);
     vector<uint64_t> start_nodes = dag.getInitialNodes();
     for (vector<uint64_t>::iterator it=start_nodes.begin(); it!=start_nodes.end(); ++it) {
