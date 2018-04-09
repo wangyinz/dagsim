@@ -202,8 +202,23 @@ class Frontier {
 };
 
 
-void next_step (int i, vector<Frontier> front, vector<int> pc, vector<vector<bool>> record) {
-    
+void next_step (int i, vector<Frontier> front, vector<int> pc, vector<int> current, vector<vector<bool>> record) {
+    if(current[i] == 0) {
+        switch (++pc[i]) {
+            case 1: {
+                
+                break;
+            }
+            //for any other instructions only keep make the processor busy for one cycle
+            default: {
+                record[i].push_back(true);
+                break;
+            }
+        }
+        
+    } else {
+        current[i]--;
+    }
 }
 
 void usage () {
@@ -230,12 +245,15 @@ int main (int argc, char* argv[]) {
     //program counter for each processor
     vector<int> pc(p, 0);
     
+    //keep how many cycles left for currrent instruction for each processor
+    vector<int> current(p, 0);
+    
     //simulation begin
     bool finished(false);
     while (!finished) {
         //move a step for each processor
         for (int i=0;i<p;i++) {
-            next_step(i, front, pc, record);
+            next_step(i, front, pc, current, record);
         }
     
         //see whether all the frontiers are empty
