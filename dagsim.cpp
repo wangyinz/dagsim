@@ -8,6 +8,8 @@
 #include <queue>
 #include <cstdint>
 
+#define K 10000 //credit to run heartbeat 
+
 using namespace std;
 
 /*typedef struct {
@@ -211,13 +213,6 @@ class Frontier {
         }
 };
 
-class Vertex {
-    private:
-        Frontier f;
-    public:
-        void run() {};
-};
-
 struct Frontier_comp
 {
     bool operator() (Frontier& e1, Frontier& e2) { 
@@ -237,10 +232,46 @@ class Pool {
         void push (Frontier f) {
             q.push(f);
         }
+        bool empty () {
+            return q.empty();
+        }
+};
+
+class Vertex {
+    private:
+        Frontier f;
+    public:
+        void run(DashmmDag& dag, Pool& pool) {
+            while (dag.remaining > 0) {
+                while (!pool.empty()) {
+                    f = pool.pop();
+                    int credit = 0;
+                    while (!f.empty()) {
+                        item it = f.pop();
+                        //b' := f(m,n,b);
+                        credit += dag.getFunction(it.m, it.n).cycles;
+                        bool should_push(false);
+                        
+                            //n.b+=b'
+                            //should_push = (--n.remaining == 0);
+                        
+                        if (should_push)
+                            f.pushEdges(it.n, dag);
+                        if (credit > K) {
+                            Frontier f_new = f.split();
+                        
+                                pool.push(f_new);
+                                pool.push(f);
+                                f = pool.pop();
+                        }
+                    }
+                }
+            }
+        };
 };
 
 void next_step (Pool& pool, int i, vector<Vertex>& vertex, vector<int>& pc, vector<int>& current, vector<vector<bool>>& record) {
-    if(current[i] == 0) {
+    if (current[i] == 0) {
         switch (++pc[i]) {
             case 1: {
                 
@@ -289,7 +320,7 @@ int main (int argc, char* argv[]) {
     vector<int> current(p, 0);
     
     //simulation begin
-    while (dag.remaining != 0) {
+    while (dag.remaining > 0) {
         //move a step for each processor
         for (int i=0;i<p;i++) {
             next_step(pool, i, vertex, pc, current, record);
