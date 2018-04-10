@@ -242,24 +242,23 @@ class Vertex {
         Frontier f;
     public:
         void run(DashmmDag& dag, Pool& pool) {
-            while (dag.remaining > 0) {
-                while (!pool.empty()) {
-                    f = pool.pop();
-                    int credit = 0;
-                    while (!f.empty()) {
-                        item it = f.pop();
-                        //b' := f(m,n,b);
-                        credit += dag.getFunction(it.m, it.n).cycles;
+            while (dag.remaining > 0) {     //line 1
+                while (!pool.empty()) {     
+                    f = pool.pop();         //line 2
+                    int credit = 0;         
+                    while (!f.empty()) {    
+                        item it = f.pop();  //line 3
+                        //b' := f(m,n,b);   //line 4
+                        credit += dag.getFunction(it.m, it.n).cycles;   //line 5
                         bool should_push(false);
                         //atomic
-                            //n.b+=b'
+                            //n.b+=b'                                   //line 6
                             //should_push = (--n.remaining == 0);
-                        if (should_push)
-                            f.pushEdges(it.n, dag);
+                        if (should_push) f.pushEdges(it.n, dag);        //line 7
                         if (credit > K) {
-                            Frontier f_new = f.split();
+                            Frontier f_new = f.split();                 //line 8
                             //atomic
-                                pool.push(f_new);
+                                pool.push(f_new);                       //line 9
                                 pool.push(f);
                                 f = pool.pop();
                         }
