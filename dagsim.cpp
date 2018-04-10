@@ -72,7 +72,9 @@ class DashmmDag {
     private:
         map<uint64_t, DashmmNode> dag;
     public:
+        int remaining;
         DashmmDag (string textin) {
+            remaining = 0;
             ifstream infile;
             infile.open(textin.c_str());
             string line;
@@ -91,6 +93,7 @@ class DashmmDag {
                     iss >> std::dec >> priority >> size;
                     DashmmNode node(id, type, priority, size);
                     dag.insert(pair<uint64_t, DashmmNode>(id, node));
+                    remaining++;
                     //cout << id  << "\t" << type  << "\t" << priority  << "\t" << size << endl; 
                 } else {
                     iss >> std::dec >> fun.cycles;
@@ -139,11 +142,9 @@ class DashmmDag {
                     << id1 << " and " << id2 << endl;
             }
         }
-
         int getFunctionCycles (uint64_t m, uint64_t n) {
             return this->getFunction(m, n).cycles;
         }
-
         //The destination node of the function determines the priority.
         int getFunctionPriority (uint64_t dest) {
             return dag.at(dest).getPriority();
@@ -167,7 +168,7 @@ struct item_comp
 class Frontier {
     private:
         priority_queue<item, vector<item>, item_comp> q;
-        int priority
+        int priority;
     public:
         Frontier () {
             priority = 0;
@@ -175,14 +176,14 @@ class Frontier {
         item pop () {
             item r = q.top();
             q.pop();
-            priority -= f.priority;
+            priority -= r.priority;
             return r;
         }
         void push (item f) {
             q.push(f);
             priority += f.priority;
         }
-        void push_edges (uint64_t n, DashmmDag& dag) {
+        void pushEdges (uint64_t n, DashmmDag& dag) {
             map<uint64_t, Function> edges(dag.getOutEdges(n));
             for (map<uint64_t, Function>::iterator it=edges.begin(); it!=edges.end(); ++it) {
                 item f;
@@ -205,7 +206,7 @@ class Frontier {
             }
             return f;
         }
-        int get_priority () {
+        int getPriority () {
             return priority;
         }
 };
@@ -220,7 +221,7 @@ class Vertex {
 struct Frontier_comp
 {
     bool operator() (Frontier& e1, Frontier& e2) { 
-        return e1.get_priority() < e2.get_priority(); 
+        return e1.getPriority() < e2.getPriority(); 
     }
 };
 
@@ -238,7 +239,7 @@ class Pool {
         }
 };
 
-void next_step (int i, vector<Frontier> front, vector<int> pc, vector<int> current, vector<vector<bool>> record) {
+void next_step (Pool& pool, int i, vector<Vertex>& vertex, vector<int>& pc, vector<int>& current, vector<vector<bool>>& record) {
     if(current[i] == 0) {
         switch (++pc[i]) {
             case 1: {
@@ -268,12 +269,15 @@ int main (int argc, char* argv[]) {
     //Read in DASHMM dag
     DashmmDag dag(textin);
     
-    //define one frontier for each processor, and add all the items to frontier 0
-    vector<Frontier> front(p);
+    //define one vertex for each processor, and add all the items to a new frontier in the pool
+    vector<Vertex> vertex(p);
+    Frontier f;
+    Pool pool;
     vector<uint64_t> start_nodes = dag.getInitialNodes();
     for (vector<uint64_t>::iterator it=start_nodes.begin(); it!=start_nodes.end(); ++it) {
-        front[0].push_edges(*it,dag);
+        f.pushEdges(*it,dag);
     }
+    pool.push(f);
     
     //matrix to record whether a processor is busy or not
     vector<vector<bool>> record(p);
@@ -285,17 +289,11 @@ int main (int argc, char* argv[]) {
     vector<int> current(p, 0);
     
     //simulation begin
-    bool finished(false);
-    while (!finished) {
+    while (dag.remaining != 0) {
         //move a step for each processor
         for (int i=0;i<p;i++) {
-            next_step(i, front, pc, current, record);
+            next_step(pool, i, vertex, pc, current, record);
         }
-    
-        //see whether all the frontiers are empty
-        finished = front[0].empty();
-        for (int i=1;i<p;i++)
-            finished = finished && front[i].empty();
     }
     //Print the maps for verification
     //dag.print();
