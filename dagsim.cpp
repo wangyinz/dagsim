@@ -273,18 +273,21 @@ class Vertex {
 void next_step (Pool& pool, int i, vector<Vertex>& vertex, 
   vector<int>& pc, vector<int>& current, 
     vector<int>& credit, vector<vector<short>>& record, 
-      DashmmDag& dag, vector<item>& current_it) {
+      DashmmDag& dag, vector<item>& current_it, 
+        vector<vector<short>>& priority) {
   if (current[i] == 0) {
     //cout << "Core: " << i << " at line: " << pc[i] << endl;
     switch (++pc[i]) {
       case 1: {
         if (!pool.empty()) {
           record[i].push_back(1);
+          priority[i].push_back(-1);
           //the next line has to be done here
           vertex[i].f = pool.pop();
         }
         else {
           record[i].push_back(0);
+          priority[i].push_back(0);
           pc[i]--;
         }
         break;
@@ -292,13 +295,17 @@ void next_step (Pool& pool, int i, vector<Vertex>& vertex,
       case 2: {
         credit[i] = 0;
         record[i].push_back(1);
+        priority[i].push_back(-1);
         break;
       }
       case 3: {
-        if (!vertex[i].f.empty())
+        if (!vertex[i].f.empty()) {
           record[i].push_back(1);
+          priority[i].push_back(-1);
+        }
         else {
           record[i].push_back(0);
+          priority[i].push_back(0);
           pc[i] -= 3;
         }
         break;
@@ -308,12 +315,14 @@ void next_step (Pool& pool, int i, vector<Vertex>& vertex,
         item it = vertex[i].f.pop();
         current[i] = dag.getFunctionCycles(it.m, it.n) / FN -1;
         record[i].push_back(4);
+        priority[i].push_back(dag.getFunctionPriority(it.n) + 1);
         current_it[i] = it;
         break;
       }
       case 5: {
         credit[i] = dag.getFunctionCycles(current_it[i].m, current_it[i].n) / FN;
         record[i].push_back(1);
+        priority[i].push_back(-1);
         break;
       }
       case 6: {
@@ -325,9 +334,11 @@ void next_step (Pool& pool, int i, vector<Vertex>& vertex,
           current[i] = dag.getNode(current_it[i].n).size() / BN - 1;
           dag.getNode(current_it[i].n).remaining--;
           record[i].push_back(3);
+          priority[i].push_back(-1);
         }
         else {
           record[i].push_back(0);
+          priority[i].push_back(0);
           pc[i]--;
         }
         break;
@@ -339,6 +350,7 @@ void next_step (Pool& pool, int i, vector<Vertex>& vertex,
           //cout << dag.remaining << endl;
         }
         record[i].push_back(1);
+        priority[i].push_back(-1);
         break;
       }
       case 8: {
@@ -346,11 +358,13 @@ void next_step (Pool& pool, int i, vector<Vertex>& vertex,
           Frontier f_new = vertex[i].f.split(); 
           credit[i] = 0;
           record[i].push_back(2);
+          priority[i].push_back(-1);
           //the next is in line 9 and is atomic, but it's easier to do it here
           pool.push(f_new);
         }
         else {
           record[i].push_back(1);
+          priority[i].push_back(-1);
           pc[i] = 2;
         }
         break;
@@ -359,18 +373,21 @@ void next_step (Pool& pool, int i, vector<Vertex>& vertex,
         pool.push(vertex[i].f);
         vertex[i].f = pool.pop();
         record[i].push_back(2);
+        priority[i].push_back(-1);
         pc[i] = 2;
         break;
       }
       //for any other instructions only keep make the processor busy for one cycle
       default: {
         record[i].push_back(1);
+        priority[i].push_back(-1);
         break;
       }
     }
   } else {
     current[i]--;
     record[i].push_back(record[i].back());
+    priority[i].push_back(priority[i].back());
     //if(current[i] == 0)
       //cout << "Core: " << i << " remain: " << current[i]  << " credit: " << credit[i] << endl;
   }
@@ -402,6 +419,9 @@ int main (int argc, char* argv[]) {
   //0 for idle, 1 for other instructions, 2 for heartbeat, 3 for reduction, 4 for dashmm function
   vector<vector<short>> record(p);
   
+  //matrix to see the priority of current task
+  vector<vector<short>> priority(p);
+  
   //program counter for each processor
   vector<int> pc(p, 0);
   
@@ -418,11 +438,18 @@ int main (int argc, char* argv[]) {
   while (dag.remaining > 0) {
     //move a step for each processor
     for (int i=0;i<p;i++) {
-      next_step(pool, i, vertex, pc, current, credit, record, dag, current_it);
+      next_step(pool, i, vertex, pc, current, credit, record, dag, current_it, priority);
     }
   }
   
   for (vector<vector<short>>::iterator it=record.begin(); it!=record.end(); ++it) {
+    for (vector<short>::iterator iit=it->begin(); iit!=it->end(); ++iit) {
+      cout << *iit << "\t";
+    }
+    cout << endl;
+  }
+  
+  for (vector<vector<short>>::iterator it=priority.begin(); it!=priority.end(); ++it) {
     for (vector<short>::iterator iit=it->begin(); iit!=it->end(); ++iit) {
       cout << *iit << "\t";
     }
