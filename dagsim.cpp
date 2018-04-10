@@ -167,14 +167,20 @@ struct item_comp
 class Frontier {
     private:
         priority_queue<item, vector<item>, item_comp> q;
+        int priority
     public:
+        Frontier () {
+            priority = 0;
+        }
         item pop () {
             item r = q.top();
-            q.pop(); 
+            q.pop();
+            priority -= f.priority;
             return r;
         }
         void push (item f) {
             q.push(f);
+            priority += f.priority;
         }
         void push_edges (uint64_t n, DashmmDag& dag) {
             map<uint64_t, Function> edges(dag.getOutEdges(n));
@@ -183,7 +189,7 @@ class Frontier {
                 f.m = n;
                 f.n = it->first;
                 f.priority = dag.getFunctionPriority(it->first);
-                q.push(f);
+                this->push(f);
             }
         }
         bool empty () {
@@ -199,8 +205,38 @@ class Frontier {
             }
             return f;
         }
+        int get_priority () {
+            return priority;
+        }
 };
 
+class Vertex {
+    private:
+        Frontier f;
+    public:
+        void run() {};
+};
+
+struct Frontier_comp
+{
+    bool operator() (Frontier& e1, Frontier& e2) { 
+        return e1.get_priority() < e2.get_priority(); 
+    }
+};
+
+class Pool {
+    private:
+        priority_queue<Frontier, vector<Frontier>, Frontier_comp> q;
+    public:
+        Frontier pop () {
+            Frontier r = q.top();
+            q.pop();
+            return r;
+        }
+        void push (Frontier f) {
+            q.push(f);
+        }
+};
 
 void next_step (int i, vector<Frontier> front, vector<int> pc, vector<int> current, vector<vector<bool>> record) {
     if(current[i] == 0) {
