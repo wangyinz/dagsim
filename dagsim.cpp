@@ -251,15 +251,14 @@ class Vertex {
                         //b' := f(m,n,b);
                         credit += dag.getFunction(it.m, it.n).cycles;
                         bool should_push(false);
-                        
+                        //atomic
                             //n.b+=b'
                             //should_push = (--n.remaining == 0);
-                        
                         if (should_push)
                             f.pushEdges(it.n, dag);
                         if (credit > K) {
                             Frontier f_new = f.split();
-                        
+                            //atomic
                                 pool.push(f_new);
                                 pool.push(f);
                                 f = pool.pop();
