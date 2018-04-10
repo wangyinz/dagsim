@@ -8,7 +8,9 @@
 #include <queue>
 #include <cstdint>
 
-#define K 10000 //credit to run heartbeat 
+#define K 500 //credit to run heartbeat 
+#define FN 10 //normalization factor for functions 
+#define BN 16 //normalization factor for data blocks 
 
 using namespace std;
 
@@ -118,7 +120,7 @@ class DashmmDag {
                 cout << endl;
             }
         }
-        DashmmNode getNode (uint64_t id) {
+        DashmmNode& getNode (uint64_t id) {
             try {
                 return dag.at(id);
             } catch (const std::out_of_range& oor) {
@@ -238,18 +240,17 @@ class Pool {
 };
 
 class Vertex {
-    private:
-        Frontier f;
     public:
+        Frontier f;
         void run(DashmmDag& dag, Pool& pool) {
-            while (dag.remaining > 0) {     //line 1
-                while (!pool.empty()) {     
+            while (dag.remaining > 0) {
+                while (!pool.empty()) {     //line 1
                     f = pool.pop();         //line 2
                     int credit = 0;         
-                    while (!f.empty()) {    
-                        item it = f.pop();  //line 3
-                        //b' := f(m,n,b);   //line 4
-                        credit += dag.getFunction(it.m, it.n).cycles;   //line 5
+                    while (!f.empty()) {    //line 3
+                        item it = f.pop();  //line 4
+                        //b' := f(m,n,b);
+                        credit += dag.getFunctionCycles(it.m, it.n);   //line 5
                         bool should_push(false);
                         //atomic
                             //n.b+=b'                                   //line 6
@@ -257,6 +258,7 @@ class Vertex {
                         if (should_push) f.pushEdges(it.n, dag);        //line 7
                         if (credit > K) {
                             Frontier f_new = f.split();                 //line 8
+                            credit = 0;
                             //atomic
                                 pool.push(f_new);                       //line 9
                                 pool.push(f);
@@ -268,22 +270,109 @@ class Vertex {
         };
 };
 
-void next_step (Pool& pool, int i, vector<Vertex>& vertex, vector<int>& pc, vector<int>& current, vector<vector<bool>>& record) {
+void next_step (Pool& pool, int i, vector<Vertex>& vertex, 
+    vector<int>& pc, vector<int>& current, 
+        vector<int>& credit, vector<vector<short>>& record, 
+            DashmmDag& dag, vector<item>& current_it) {
     if (current[i] == 0) {
+        //cout << "Core: " << i << " at line: " << pc[i] << endl;
         switch (++pc[i]) {
             case 1: {
-                
+                if (!pool.empty()) {
+                    record[i].push_back(1);
+                    //the next line has to be done here
+                    vertex[i].f = pool.pop();
+                }
+                else {
+                    record[i].push_back(0);
+                    pc[i]--;
+                }
+                break;
+            }
+            case 2: {
+                credit[i] = 0;
+                record[i].push_back(1);
+                break;
+            }
+            case 3: {
+                if (!vertex[i].f.empty())
+                    record[i].push_back(1);
+                else {
+                    record[i].push_back(0);
+                    pc[i] -= 3;
+                }
+                break;
+            }
+            //4 is to run dashmm function
+            case 4: {
+                item it = vertex[i].f.pop();
+                current[i] = dag.getFunctionCycles(it.m, it.n) / FN -1;
+                record[i].push_back(4);
+                current_it[i] = it;
+                break;
+            }
+            case 5: {
+                credit[i] = dag.getFunctionCycles(current_it[i].m, current_it[i].n) / FN;
+                record[i].push_back(1);
+                break;
+            }
+            case 6: {
+                bool blocked(false);
+                for (int ii=0; ii<pc.size(); ii++) 
+                    if(pc[ii] == 6 && ii != i)
+                        blocked = true;
+                if (!blocked) {
+                    current[i] = dag.getNode(current_it[i].n).size() / BN - 1;
+                    dag.getNode(current_it[i].n).remaining--;
+                    record[i].push_back(3);
+                }
+                else {
+                    record[i].push_back(0);
+                    pc[i]--;
+                }
+                break;
+            }
+            case 7: {
+                if (dag.getNode(current_it[i].n).remaining == 0) {
+                    vertex[i].f.pushEdges(current_it[i].n, dag);
+                    dag.remaining--;
+                    //cout << dag.remaining << endl;
+                }
+                record[i].push_back(1);
+                break;
+            }
+            case 8: {
+                if (credit[i] > K) {
+                    Frontier f_new = vertex[i].f.split(); 
+                    credit[i] = 0;
+                    record[i].push_back(2);
+                    //the next is in line 9 and is atomic, but it's easier to do it here
+                    pool.push(f_new);
+                }
+                else {
+                    record[i].push_back(1);
+                    pc[i] = 2;
+                }
+                break;
+            }
+            case 9: {
+                pool.push(vertex[i].f);
+                vertex[i].f = pool.pop();
+                record[i].push_back(2);
+                pc[i] = 2;
                 break;
             }
             //for any other instructions only keep make the processor busy for one cycle
             default: {
-                record[i].push_back(true);
+                record[i].push_back(1);
                 break;
             }
         }
-        
     } else {
         current[i]--;
+        record[i].push_back(record[i].back());
+        //if(current[i] == 0)
+            //cout << "Core: " << i << " remain: " << current[i]  << " credit: " << credit[i] << endl;
     }
 }
 
@@ -305,11 +394,13 @@ int main (int argc, char* argv[]) {
     vector<uint64_t> start_nodes = dag.getInitialNodes();
     for (vector<uint64_t>::iterator it=start_nodes.begin(); it!=start_nodes.end(); ++it) {
         f.pushEdges(*it,dag);
+        dag.remaining--;
     }
     pool.push(f);
     
-    //matrix to record whether a processor is busy or not
-    vector<vector<bool>> record(p);
+    //matrix to record what a processor is doing: 
+    //0 for idle, 1 for other instructions, 2 for heartbeat, 3 for reduction, 4 for dashmm function
+    vector<vector<short>> record(p);
     
     //program counter for each processor
     vector<int> pc(p, 0);
@@ -317,13 +408,27 @@ int main (int argc, char* argv[]) {
     //keep how many cycles left for currrent instruction for each processor
     vector<int> current(p, 0);
     
+    //keep how many credits accumulated for each processor
+    vector<int> credit(p, 0);
+    
+    //keep track of which dashmm edge it is processing
+    vector<item> current_it(p);
+    
     //simulation begin
     while (dag.remaining > 0) {
         //move a step for each processor
         for (int i=0;i<p;i++) {
-            next_step(pool, i, vertex, pc, current, record);
+            next_step(pool, i, vertex, pc, current, credit, record, dag, current_it);
         }
     }
+    
+    for (vector<vector<short>>::iterator it=record.begin(); it!=record.end(); ++it) {
+        for (vector<short>::iterator iit=it->begin(); iit!=it->end(); ++iit) {
+            cout << *iit << "\t";
+        }
+        cout << endl;
+    }
+    
     //Print the maps for verification
     //dag.print();
     
