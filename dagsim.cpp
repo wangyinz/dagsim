@@ -370,11 +370,22 @@ void next_step (Pool& pool, int i, vector<Vertex>& vertex,
         break;
       }
       case 9: {
-        pool.push(vertex[i].f);
-        vertex[i].f = pool.pop();
-        record[i].push_back(2);
-        priority[i].push_back(-1);
-        pc[i] = 2;
+        bool blocked(false);
+        for (int ii=0; ii<pc.size(); ii++) 
+          if(pc[ii] == 9 && ii != i)
+            blocked = true;
+        if (!blocked) {
+          pool.push(vertex[i].f);
+          vertex[i].f = pool.pop();
+          record[i].push_back(2);
+          priority[i].push_back(-1);
+          pc[i] = 2;
+        }
+        else {
+          record[i].push_back(0);
+          priority[i].push_back(0);
+          pc[i]--;
+        }
         break;
       }
       //for any other instructions only keep make the processor busy for one cycle
