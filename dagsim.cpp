@@ -406,18 +406,40 @@ void next_step (Pool& pool, int i, vector<Vertex>& vertex,
 }
 
 void usage () {
-  cout<<"usage: dagsim input.txt"<<endl;
+  cout<<"usage: dagsim input.txt [-np np]"<<endl;
 }
 
 int main (int argc, char* argv[]) {
   if (argc<2) {usage();return 0;}
   string textin(argv[1]);
-  int p = 4; 
+  int np = 4; 
+  
+  for(int i=2; i<argc; ++i) {
+    string sarg(argv[i]);
+    if (sarg == "--help")
+      {usage();return 0;}
+    else if (sarg=="-np") {
+      ++i;
+      if (i>=argc) 
+        {usage();return 0;}
+      np = atoi(argv[i]);
+      if (np <= 0) {
+        cerr << "Illegal value for -np argument ="
+          << np <<endl
+          << "Must be positive integer"<<endl;
+        usage();
+        return 0;
+      }
+    }
+    else
+      {usage();return 0;}
+  }
+  
   //Read in DASHMM dag
   DashmmDag dag(textin);
   
   //define one vertex for each processor, and add all the items to a new frontier in the pool
-  vector<Vertex> vertex(p);
+  vector<Vertex> vertex(np);
   Frontier f;
   Pool pool;
   vector<uint64_t> start_nodes = dag.getInitialNodes();
@@ -429,27 +451,27 @@ int main (int argc, char* argv[]) {
   
   //matrix to record what a processor is doing: 
   //0 for idle, 1 for other instructions, 2 for heartbeat, 3 for reduction, 4 for dashmm function
-  vector<vector<short>> record(p);
+  vector<vector<short>> record(np);
   
   //matrix to see the priority of current task
-  vector<vector<short>> priority(p);
+  vector<vector<short>> priority(np);
   
   //program counter for each processor
-  vector<int> pc(p, 0);
+  vector<int> pc(np, 0);
   
   //keep how many cycles left for currrent instruction for each processor
-  vector<int> current(p, 0);
+  vector<int> current(np, 0);
   
   //keep how many credits accumulated for each processor
-  vector<int> credit(p, 0);
+  vector<int> credit(np, 0);
   
   //keep track of which dashmm edge it is processing
-  vector<item> current_it(p);
+  vector<item> current_it(np);
   
   //simulation begin
   while (dag.remaining > 0) {
     //move a step for each processor
-    for (int i=0;i<p;i++) {
+    for (int i=0;i<np;i++) {
       next_step(pool, i, vertex, pc, current, credit, record, dag, current_it, priority);
     }
   }
