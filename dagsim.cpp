@@ -329,7 +329,8 @@ void next_step (Pool& pool, int i, vector<Vertex>& vertex,
         bool blocked(false);
         for (int ii=0; ii<pc.size(); ii++) 
           if(pc[ii] == 6 && ii != i)
-            blocked = true;
+            if(current_it[i].n == current_it[ii].n)
+              blocked = true;
         if (!blocked) {
           current[i] = dag.getNode(current_it[i].n).size() / BN - 1;
           dag.getNode(current_it[i].n).remaining--;
