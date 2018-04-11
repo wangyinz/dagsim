@@ -274,7 +274,8 @@ void next_step (Pool& pool, int i, vector<Vertex>& vertex,
   vector<int>& pc, vector<int>& current, 
     vector<int>& credit, vector<vector<short>>& record, 
       DashmmDag& dag, vector<item>& current_it, 
-        vector<vector<short>>& priority) {
+        vector<vector<short>>& priority, 
+        int k, int fn, int bn) {
   if (current[i] == 0) {
     //cout << "Core: " << i << " at line: " << pc[i] << endl;
     switch (++pc[i]) {
@@ -313,14 +314,16 @@ void next_step (Pool& pool, int i, vector<Vertex>& vertex,
       //4 is to run dashmm function
       case 4: {
         item it = vertex[i].f.pop();
-        current[i] = dag.getFunctionCycles(it.m, it.n) / FN -1;
+        current[i] = dag.getFunctionCycles(it.m, it.n) / fn;
+        if (current[i] > 0)
+          current[i]--;
         record[i].push_back(4);
         priority[i].push_back(dag.getFunctionPriority(it.n) + 1);
         current_it[i] = it;
         break;
       }
       case 5: {
-        credit[i] = dag.getFunctionCycles(current_it[i].m, current_it[i].n) / FN;
+        credit[i] = dag.getFunctionCycles(current_it[i].m, current_it[i].n) / fn;
         record[i].push_back(1);
         priority[i].push_back(-1);
         break;
@@ -332,7 +335,9 @@ void next_step (Pool& pool, int i, vector<Vertex>& vertex,
             if(current_it[i].n == current_it[ii].n)
               blocked = true;
         if (!blocked) {
-          current[i] = dag.getNode(current_it[i].n).size() / BN - 1;
+          current[i] = dag.getNode(current_it[i].n).size() / bn;
+          if (current[i] > 0)
+            current[i]--;
           dag.getNode(current_it[i].n).remaining--;
           record[i].push_back(3);
           priority[i].push_back(-1);
@@ -355,7 +360,7 @@ void next_step (Pool& pool, int i, vector<Vertex>& vertex,
         break;
       }
       case 8: {
-        if (credit[i] > K) {
+        if (credit[i] > k) {
           Frontier f_new = vertex[i].f.split(); 
           credit[i] = 0;
           record[i].push_back(2);
@@ -406,13 +411,21 @@ void next_step (Pool& pool, int i, vector<Vertex>& vertex,
 }
 
 void usage () {
-  cout<<"usage: dagsim input.txt [-np np]"<<endl;
+  cout << "usage:" << endl 
+    << "dagsim input.txt [-np np -k k -fn fn -bn bn]" << endl
+    << "\tnp: number of processor to simulate" << endl
+    << "\tk: window for heartbeat in number of cycles" << endl
+    << "\tfn: normalization factor for function cycles" << endl
+    << "\tbn: normalization factor for data blocks" << endl;
 }
 
 int main (int argc, char* argv[]) {
   if (argc<2) {usage();return 0;}
   string textin(argv[1]);
   int np = 4; 
+  int k = 500; //credit to run heartbeat 
+  int fn = 10; //normalization factor for functions 
+  int bn = 16; //normalization factor for data blocks 
   
   for(int i=2; i<argc; ++i) {
     string sarg(argv[i]);
@@ -426,6 +439,45 @@ int main (int argc, char* argv[]) {
       if (np <= 0) {
         cerr << "Illegal value for -np argument ="
           << np <<endl
+          << "Must be positive integer"<<endl;
+        usage();
+        return 0;
+      }
+    }
+    else if (sarg=="-k") {
+      ++i;
+      if (i>=argc) 
+        {usage();return 0;}
+      k = atoi(argv[i]);
+      if (k <= 0) {
+        cerr << "Illegal value for -k argument ="
+          << k <<endl
+          << "Must be positive integer"<<endl;
+        usage();
+        return 0;
+      }
+    }
+    else if (sarg=="-fn") {
+      ++i;
+      if (i>=argc) 
+        {usage();return 0;}
+      fn = atoi(argv[i]);
+      if (fn <= 0) {
+        cerr << "Illegal value for -fn argument ="
+          << fn <<endl
+          << "Must be positive integer"<<endl;
+        usage();
+        return 0;
+      }
+    }
+    else if (sarg=="-bn") {
+      ++i;
+      if (i>=argc) 
+        {usage();return 0;}
+      bn = atoi(argv[i]);
+      if (bn <= 0) {
+        cerr << "Illegal value for -bn argument ="
+          << bn <<endl
           << "Must be positive integer"<<endl;
         usage();
         return 0;
@@ -472,7 +524,7 @@ int main (int argc, char* argv[]) {
   while (dag.remaining > 0) {
     //move a step for each processor
     for (int i=0;i<np;i++) {
-      next_step(pool, i, vertex, pc, current, credit, record, dag, current_it, priority);
+      next_step(pool, i, vertex, pc, current, credit, record, dag, current_it, priority, k, fn, bn);
     }
   }
   
